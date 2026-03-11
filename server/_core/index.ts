@@ -38,24 +38,23 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  // Dev-only login bypass (no OAuth server needed)
-  if (process.env.NODE_ENV === "development") {
-    app.get("/api/dev-login", (req, res) => {
-      const openId = ENV.ownerOpenId || "dev-owner";
-      const name = "Dev Admin";
-      const finish = async () => {
-        try {
-          await db.upsertUser({ openId, name, email: "dev@local", loginMethod: "dev", lastSignedIn: new Date(), role: "admin" });
-        } catch {
-          // DB not available — session will still work with JWT-only fallback
-        }
-        const token = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
-        res.cookie(COOKIE_NAME, token, { httpOnly: true, path: "/", sameSite: "lax", secure: false, maxAge: ONE_YEAR_MS });
-        res.redirect(302, "/");
-      };
-      finish().catch(err => { console.error("[dev-login] error:", err); res.status(500).send("dev login failed"); });
-    });
-  }
+  // Login bypass (dev + demo preview)
+  app.get("/api/dev-login", (req, res) => {
+    const openId = ENV.ownerOpenId || "dev-owner";
+    const name = "Dev Admin";
+    const isSecure = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https";
+    const finish = async () => {
+      try {
+        await db.upsertUser({ openId, name, email: "dev@local", loginMethod: "dev", lastSignedIn: new Date(), role: "admin" });
+      } catch {
+        // DB not available — session will still work with JWT-only fallback
+      }
+      const token = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, token, { httpOnly: true, path: "/", sameSite: isSecure ? "none" : "lax", secure: isSecure, maxAge: ONE_YEAR_MS });
+      res.redirect(302, "/");
+    };
+    finish().catch(err => { console.error("[dev-login] error:", err); res.status(500).send("login failed"); });
+  });
 
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);

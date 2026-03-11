@@ -272,8 +272,8 @@ class SDKServer {
 
     // If user not in DB, try to sync from OAuth server (or fall back in dev)
     if (!user) {
-      if (process.env.NODE_ENV === "development") {
-        // No DB available in dev — return a synthetic admin user from the JWT payload
+      if (!process.env.DATABASE_URL || process.env.NODE_ENV === "development") {
+        // No DB available — return a synthetic admin user from the JWT payload
         return {
           id: 0,
           openId: session.openId,
