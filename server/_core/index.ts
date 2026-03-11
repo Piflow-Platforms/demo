@@ -50,7 +50,7 @@ async function startServer() {
         // DB not available — session will still work with JWT-only fallback
       }
       const token = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
-      res.cookie(COOKIE_NAME, token, { httpOnly: true, path: "/", sameSite: isSecure ? "none" : "lax", secure: isSecure, maxAge: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, token, { httpOnly: true, path: "/", sameSite: "lax", secure: false, maxAge: ONE_YEAR_MS });
       res.redirect(302, "/");
     };
     finish().catch(err => { console.error("[dev-login] error:", err); res.status(500).send("login failed"); });
